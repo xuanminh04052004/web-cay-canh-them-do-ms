@@ -33,13 +33,6 @@ const services = [
     features: ["Tưới nước định kỳ", "Bón phân theo mùa", "Kiểm tra sức khỏe cây"],
   },
   {
-    icon: Calendar,
-    title: "Cho thuê cây cảnh",
-    description: "Dịch vụ cho thuê cây cảnh cho sự kiện, văn phòng, và không gian thương mại.",
-    price: "Liên hệ",
-    features: ["Cây đa dạng kích thước", "Thay đổi theo mùa", "Bao gồm chăm sóc"],
-  },
-  {
     icon: Shield,
     title: "Bảo hành cây",
     description: "Chương trình bảo hành đặc biệt cho cây mua tại Leafora với đội ngũ hỗ trợ 24/7.",
@@ -207,12 +200,6 @@ const Services = () => {
               >
                 <Phone className="w-5 h-5" />
                 Gọi ngay: 0123 456 789
-              </a>
-              <a
-                href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-card border border-border rounded-full hover:bg-muted transition-colors"
-              >
-                Gửi yêu cầu
               </a>
             </div>
           </div>
