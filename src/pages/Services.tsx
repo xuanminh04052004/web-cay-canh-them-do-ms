@@ -61,8 +61,8 @@ const packages = [
     period: "/tháng",
     description: "Phù hợp cho văn phòng hoặc nhà có 5-10 cây",
     features: [
-      "Tưới nước 3 lần/tuần",
-      "Bón phân 2 lần/tháng",
+      "Tưới nước 4 lần/tuần",
+      "Bón phân 3 lần/tháng",
       "Cắt tỉa định kỳ",
       "Xử lý sâu bệnh",
       "Thay chậu khi cần",
