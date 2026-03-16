@@ -610,7 +610,7 @@ export const categories = [
   "Phòng khách",
   "Cây ăn quả",
   "Cây bông hoa",
-  "Phụ kiện & Phân bón, đất",
+  "Phụ kiện & Phân bón",
 ];
 
 export const formatPrice = (price: number) => {
