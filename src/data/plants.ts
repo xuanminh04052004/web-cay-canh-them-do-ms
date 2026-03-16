@@ -19,13 +19,13 @@ import tuyetSonPhiHongImg from "@/assets/plants/tuyet-son-phi-hong.jpg";
 import kimNganLuongImg from "@/assets/plants/kim-ngan-luong.jpg";
 import cucMamXoiImg from "@/assets/plants/cuc-mam-xoi.jpg";
 import tacKiengMiniImg from "@/assets/plants/cay-tac-kieng-mini.jpg";
-import dungCuLamVuonImg from "@/assets/products/dung-cu-lam-vuon.jpg";
-import phanBoTribatImg from "@/assets/products/phan-bo-tribat.jpg";
-import kichReN3MImg from "@/assets/products/kich-re-n3m.jpg";
-import voLacXayImg from "@/assets/products/vo-lac-xay.jpg";
-import datAkadamaImg from "@/assets/products/dat-akadama.jpg";
-import phanTrunQueVienImg from "@/assets/products/phan-trun-que-cao-cap.jpg";
-import phanTrunQueSfarmImg from "@/assets/products/phan-trun-que-sfarm.jpg"
+import dungCuLamVuonImg from "@/assets/plants/dung-cu-lam-vuon.jpg";
+import phanBoTribatImg from "@/assets/plants/phan-bo-tribat.jpg";
+import kichReN3MImg from "@/assets/plants/kich-re-n3m.jpg";
+import voLacXayImg from "@/assets/plants/vo-lac-xay.jpg";
+import datAkadamaImg from "@/assets/plants/dat-akadama.jpg";
+import phanTrunQueVienImg from "@/assets/plants/phan-trun-que-cao-cap.jpg";
+import phanTrunQueSfarmImg from "@/assets/plants/phan-trun-que-sfarm.jpg"
 
 export interface Plant {
   id: number;
