@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { useState, useEffect } from "react";
 import SearchDropdown from "@/components/SearchDropdown";
 import NotificationBell from "@/components/NotificationBell";
@@ -28,6 +29,7 @@ const navLinks = [
 const LandingHeader = () => {
   const { getTotalItems, setIsCartOpen } = useCart();
   const { user, logout } = useAuth();
+  const { isAdminLoggedIn, logoutAdmin } = useAdmin();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
@@ -161,6 +163,46 @@ const LandingHeader = () => {
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut className="w-4 h-4 mr-2" />
                       Đăng xuất
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : isAdminLoggedIn ? (
+              <div className="hidden sm:flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        isScrolled
+                          ? "text-foreground hover:bg-muted"
+                          : "text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      Admin
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+                        Dashboard
+                      </Badge>
+                    </motion.button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <Store className="w-4 h-4 mr-2" />
+                      Trang admin
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        logoutAdmin();
+                        toast.success("Đã đăng xuất Admin!");
+                        navigate("/");
+                      }}
+                      className="text-destructive"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Đăng xuất Admin
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
