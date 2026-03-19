@@ -28,7 +28,7 @@ interface AdminContextType {
   addProduct: (product: Omit<Plant, "id">) => void;
   updateProduct: (id: number, product: Partial<Plant>) => void;
   deleteProduct: (id: number) => void;
-  addOrder: (order: Omit<Order, "id" | "date">) => void;
+  addOrder: (order: Omit<Order, "date">) => void;
   updateOrderStatus: (id: number, status: Order["status"]) => void;
   updatePaymentStatus: (id: number, status: Order["paymentStatus"]) => void;
   deleteOrder: (id: number) => void;
@@ -105,14 +105,26 @@ const ADMIN_PASSWORD = "admin123";
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [products, setProducts] = useState<Plant[]>(() => {
-    // Always use latest data from plants.ts, clear old localStorage
-    localStorage.removeItem("admin_products");
+    const saved = localStorage.getItem("admin_products");
+    if (saved) {
+      try {
+        return JSON.parse(saved) as Plant[];
+      } catch {
+        return initialPlants;
+      }
+    }
     return initialPlants;
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    // Always use latest data, clear old localStorage
-    localStorage.removeItem("admin_orders");
+    const saved = localStorage.getItem("admin_orders");
+    if (saved) {
+      try {
+        return JSON.parse(saved) as Order[];
+      } catch {
+        return initialOrders;
+      }
+    }
     return initialOrders;
   });
 
@@ -173,14 +185,37 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const addOrder = (order: Omit<Order, "id" | "date">) => {
-    const newId = Math.max(...orders.map((o) => o.id), 0) + 1;
+  const addOrder = (order: Omit<Order, "date">) => {
+    const nextId =
+      typeof order.id === "number"
+        ? order.id
+        : orders.length > 0
+        ? Math.max(...orders.map((o) => o.id)) + 1
+        : 1;
+
     const newOrder: Order = {
       ...order,
-      id: newId,
+      id: nextId,
       date: new Date().toISOString().split("T")[0],
     };
+
     setOrders((prev) => [newOrder, ...prev]);
+
+    // Cập nhật thống kê sản phẩm: tăng số lượng đã bán và giảm tồn kho
+    setProducts((prevProducts) =>
+      prevProducts.map((p) => {
+        const matchedItem = newOrder.items.find((item) => item.plant.id === p.id);
+        if (!matchedItem) return p;
+
+        const newSold = (p.sold || 0) + matchedItem.quantity;
+        const newStock =
+          typeof p.stock === "number"
+            ? Math.max(0, p.stock - matchedItem.quantity)
+            : p.stock;
+
+        return { ...p, sold: newSold, stock: newStock };
+      })
+    );
   };
 
   const updateOrderStatus = (id: number, status: Order["status"]) => {
