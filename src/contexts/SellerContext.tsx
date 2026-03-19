@@ -687,6 +687,22 @@ export const SellerProvider = ({ children }: { children: ReactNode }) => {
       updatedAt: now,
     };
     setSubOrders(prev => [newOrder, ...prev]);
+
+    // Cập nhật thống kê sản phẩm của seller: tăng số lượng đã bán và giảm tồn kho
+    setProducts(prevProducts =>
+      prevProducts.map(p => {
+        const matchedItem = newOrder.items.find(item => item.productId === p.id);
+        if (!matchedItem) return p;
+
+        const newSold = (p.sold || 0) + matchedItem.quantity;
+        const newStock =
+          typeof p.stock === "number"
+            ? Math.max(0, p.stock - matchedItem.quantity)
+            : p.stock;
+
+        return { ...p, sold: newSold, stock: newStock };
+      })
+    );
   };
 
   const updateOrderStatus = (orderId: string, status: SubOrder['status'], trackingNumber?: string) => {
