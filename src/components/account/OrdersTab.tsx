@@ -45,7 +45,7 @@ const OrdersTab = () => {
     return status === 'pending' || status === 'confirmed';
   };
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = async () => {
     if (!selectedOrder) return;
 
     let reason = cancelReasons.find(r => r.id === selectedReason)?.label || '';
@@ -62,7 +62,7 @@ const OrdersTab = () => {
       return;
     }
 
-    const success = cancelOrder(selectedOrder.id, reason);
+    const success = await cancelOrder(selectedOrder.id, reason);
     if (success) {
       toast({
         title: 'Đã hủy đơn hàng',
