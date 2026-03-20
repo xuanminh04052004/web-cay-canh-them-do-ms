@@ -1,0 +1,97 @@
+{
+  "orders": [
+    {
+      "id": 1,
+      "customerName": "Trần Văn Đức",
+      "customerPhone": "0905123456",
+      "customerAddress": "45 Lê Lợi, phường Trần Hưng Đạo, Quy Nhơn, Bình Định",
+      "items": [
+        {
+          "plant": {
+            "id": 1,
+            "name": "Cây lưỡi hổ",
+            "price": 150000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 2
+        },
+        {
+          "plant": {
+            "id": 2,
+            "name": "Cây phú quý",
+            "price": 80000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 1
+        }
+      ],
+      "total": 380000,
+      "status": "Đã giao",
+      "paymentMethod": "COD",
+      "paymentStatus": "Đã thanh toán",
+      "date": "2025-03-05"
+    },
+    {
+      "id": 2,
+      "customerName": "Lê Thị Hương",
+      "customerPhone": "0918234567",
+      "customerAddress": "88 Nguyễn Thị Định, phường Hải Cảng, Quy Nhơn, Bình Định",
+      "items": [
+        {
+          "plant": {
+            "id": 3,
+            "name": "Cây kim tiền",
+            "price": 100000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 1
+        },
+        {
+          "plant": {
+            "id": 6,
+            "name": "Cây bình an",
+            "price": 120000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 1
+        }
+      ],
+      "total": 220000,
+      "status": "Đang giao",
+      "paymentMethod": "Chuyển khoản",
+      "paymentStatus": "Đã thanh toán",
+      "date": "2025-03-06"
+    },
+    {
+      "id": 3,
+      "customerName": "Phạm Hoàng Nam",
+      "customerPhone": "0947345678",
+      "customerAddress": "12 Trần Phú, phường Ghềnh Ráng, Quy Nhơn, Bình Định",
+      "items": [
+        {
+          "plant": {
+            "id": 7,
+            "name": "Cây trầu bà Thanh Xuân",
+            "price": 200000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 1
+        },
+        {
+          "plant": {
+            "id": 15,
+            "name": "Cây hoa lài",
+            "price": 50000,
+            "image": "/placeholder.svg"
+          },
+          "quantity": 3
+        }
+      ],
+      "total": 350000,
+      "status": "Chờ xử lý",
+      "paymentMethod": "COD",
+      "paymentStatus": "Chưa thanh toán",
+      "date": "2025-03-07"
+    }
+  ]
+}
