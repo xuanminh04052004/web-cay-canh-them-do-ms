@@ -1,12 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Plant, plants as initialPlants } from "@/data/plants";
 import { CartPlant } from "@/contexts/CartContext";
-import {
-  fetchOrdersFromServer,
-  createOrderOnServer,
-  patchOrderOnServer,
-  deleteOrderOnServer,
-} from "@/lib/jsonServerApi";
 
 export interface OrderItem {
   plant: CartPlant;
@@ -31,15 +25,13 @@ export interface Order {
 interface AdminContextType {
   products: Plant[];
   orders: Order[];
-  ordersFromServer: boolean;
   addProduct: (product: Omit<Plant, "id">) => void;
   updateProduct: (id: number, product: Partial<Plant>) => void;
   deleteProduct: (id: number) => void;
-  addOrder: (order: Omit<Order, "date">) => Promise<void>;
-  updateOrderStatus: (id: number, status: Order["status"]) => Promise<void>;
-  updatePaymentStatus: (id: number, status: Order["paymentStatus"]) => Promise<void>;
-  deleteOrder: (id: number) => Promise<void>;
-  refreshOrders: () => Promise<void>;
+  addOrder: (order: Omit<Order, "date">) => void;
+  updateOrderStatus: (id: number, status: Order["status"]) => void;
+  updatePaymentStatus: (id: number, status: Order["paymentStatus"]) => void;
+  deleteOrder: (id: number) => void;
   isAdminLoggedIn: boolean;
   loginAdmin: (email: string, password: string) => boolean;
   logoutAdmin: () => void;
@@ -124,7 +116,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     return initialPlants;
   });
 
-  const readLocalOrders = (): Order[] => {
+  const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem("admin_orders");
     if (saved) {
       try {
@@ -134,66 +126,23 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     return initialOrders;
-  };
-
-  const [orders, setOrders] = useState<Order[]>(readLocalOrders);
-  const [ordersFromServer, setOrdersFromServer] = useState(false);
-  const ordersFromServerRef = useRef(false);
-  ordersFromServerRef.current = ordersFromServer;
-
-  const sortOrdersDesc = (list: Order[]) =>
-    [...list].sort((a, b) => b.id - a.id);
+  });
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     return localStorage.getItem("admin_logged_in") === "true";
   });
 
-  const refreshOrders = useCallback(async () => {
-    const remote = await fetchOrdersFromServer();
-    if (remote !== null) {
-      setOrders(sortOrdersDesc(remote));
-      setOrdersFromServer(true);
-    }
-  }, []);
-
-  // Lần đầu: thử tải đơn từ json-server (đồng bộ nhiều máy / trình duyệt)
+  // Listen for storage changes (for syncing with user cancellations)
   useEffect(() => {
-    void refreshOrders();
-  }, [refreshOrders]);
-
-  // Polling nhẹ khi dùng API — đơn từ máy khác sẽ xuất hiện sau vài giây
-  useEffect(() => {
-    if (!ordersFromServer) return;
-    const id = window.setInterval(() => {
-      void refreshOrders();
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [ordersFromServer, refreshOrders]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      if (ordersFromServerRef.current) void refreshOrders();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [refreshOrders]);
-
-  // Đồng bộ hủy đơn từ tab khác (chế độ chỉ localStorage)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key !== "admin_orders" || ordersFromServerRef.current) return;
+    const handleStorageChange = () => {
       const saved = localStorage.getItem("admin_orders");
       if (saved) {
-        try {
-          setOrders(JSON.parse(saved) as Order[]);
-        } catch {
-          /* ignore */
-        }
+        setOrders(JSON.parse(saved));
       }
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Persist to localStorage
@@ -236,7 +185,23 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const applyProductStatsForOrder = (newOrder: Order) => {
+  const addOrder = (order: Omit<Order, "date">) => {
+    const nextId =
+      typeof order.id === "number"
+        ? order.id
+        : orders.length > 0
+        ? Math.max(...orders.map((o) => o.id)) + 1
+        : 1;
+
+    const newOrder: Order = {
+      ...order,
+      id: nextId,
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+
+    // Cập nhật thống kê sản phẩm: tăng số lượng đã bán và giảm tồn kho
     setProducts((prevProducts) =>
       prevProducts.map((p) => {
         const matchedItem = newOrder.items.find((item) => item.plant.id === p.id);
@@ -253,64 +218,20 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const addOrder = async (order: Omit<Order, "date">) => {
-    const nextId =
-      typeof order.id === "number"
-        ? order.id
-        : orders.length > 0
-          ? Math.max(...orders.map((o) => o.id)) + 1
-          : 1;
-
-    const newOrder: Order = {
-      ...order,
-      id: nextId,
-      date: new Date().toISOString().split("T")[0],
-    };
-
-    if (ordersFromServer) {
-      const saved = await createOrderOnServer(newOrder);
-      if (saved) {
-        setOrders((prev) => sortOrdersDesc([saved, ...prev.filter((o) => o.id !== saved.id)]));
-        applyProductStatsForOrder(saved);
-        return;
-      }
-      setOrdersFromServer(false);
-    }
-
-    setOrders((prev) => [newOrder, ...prev]);
-    applyProductStatsForOrder(newOrder);
+  const updateOrderStatus = (id: number, status: Order["status"]) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status } : o))
+    );
   };
 
-  const updateOrderStatus = async (id: number, status: Order["status"]) => {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-    if (ordersFromServer) {
-      const updated = await patchOrderOnServer(id, { status });
-      if (updated) {
-        setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
-      } else {
-        await refreshOrders();
-      }
-    }
+  const updatePaymentStatus = (id: number, paymentStatus: Order["paymentStatus"]) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, paymentStatus } : o))
+    );
   };
 
-  const updatePaymentStatus = async (id: number, paymentStatus: Order["paymentStatus"]) => {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, paymentStatus } : o)));
-    if (ordersFromServer) {
-      const updated = await patchOrderOnServer(id, { paymentStatus });
-      if (updated) {
-        setOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
-      } else {
-        await refreshOrders();
-      }
-    }
-  };
-
-  const deleteOrder = async (id: number) => {
+  const deleteOrder = (id: number) => {
     setOrders((prev) => prev.filter((o) => o.id !== id));
-    if (ordersFromServer) {
-      const ok = await deleteOrderOnServer(id);
-      if (!ok) await refreshOrders();
-    }
   };
 
   return (
@@ -318,7 +239,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       value={{
         products,
         orders,
-        ordersFromServer,
         addProduct,
         updateProduct,
         deleteProduct,
@@ -326,7 +246,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         updateOrderStatus,
         updatePaymentStatus,
         deleteOrder,
-        refreshOrders,
         isAdminLoggedIn,
         loginAdmin,
         logoutAdmin,
