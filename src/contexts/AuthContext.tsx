@@ -26,16 +26,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(() => {
+  const readSavedUser = (): AuthUser | null => {
     const saved = localStorage.getItem('currentUser');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved) as AuthUser;
+    } catch {
+      return null;
+    }
+  };
+
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    return readSavedUser();
   });
+
+  useEffect(() => {
+    // If `user` becomes null unexpectedly but we still have a valid session
+    // in localStorage, restore it to keep login state across routes.
+    if (!user) {
+      const restored = readSavedUser();
+      if (restored) setUser(restored);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       localStorage.setItem('currentUser', JSON.stringify(user));
     } else {
-      localStorage.removeItem('currentUser');
+      // Do not forcibly remove here; logout() will remove it immediately.
+      // This prevents accidental clearing while `user` is transiently null.
+      const saved = readSavedUser();
+      if (!saved) localStorage.removeItem('currentUser');
     }
   }, [user]);
 
@@ -93,6 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    localStorage.removeItem('currentUser');
     setUser(null);
   };
 
