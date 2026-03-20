@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Star, ShoppingCart, Filter, Search, X, Droplets, Sun, Thermometer, Wind, Eye, SlidersHorizontal, ChevronDown, Store } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
@@ -58,6 +58,19 @@ const Catalog = () => {
   const [selectedCareLevel, setSelectedCareLevel] = useState("Tất cả");
   const [sortBy, setSortBy] = useState("default");
   const [productSource, setProductSource] = useState<"all" | "greenie" | "sellers">("all");
+
+  // "GREENIE" products are managed in AdminContext and persisted in localStorage("admin_products").
+  // Catalog needs to read from there instead of using the static data/plants snapshot only.
+  const [greeniePlants, setGreeniePlants] = useState<Plant[]>(() => {
+    const saved = localStorage.getItem("admin_products");
+    if (!saved) return plantsData;
+    try {
+      const parsed = JSON.parse(saved) as Plant[];
+      return Array.isArray(parsed) ? parsed : plantsData;
+    } catch {
+      return plantsData;
+    }
+  });
   
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -95,12 +108,52 @@ const Catalog = () => {
     sellerName: getSellerById(sp.sellerId)?.shopName,
   }));
 
+  useEffect(() => {
+    const syncGreeniePlants = () => {
+      const saved = localStorage.getItem("admin_products");
+      if (!saved) {
+        setGreeniePlants(plantsData);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(saved) as Plant[];
+        if (Array.isArray(parsed)) setGreeniePlants(parsed);
+      } catch {
+        // Ignore invalid cache; keep current state.
+      }
+    };
+
+    syncGreeniePlants();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "admin_products") syncGreeniePlants();
+    };
+
+    window.addEventListener("storage", onStorage);
+
+    // In the same tab, `storage` events won't fire. Poll lightly to reflect admin changes.
+    const interval = window.setInterval(syncGreeniePlants, 2500);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  // Keep the modal content in sync when a GREENIE product gets updated in localStorage.
+  useEffect(() => {
+    if (!selectedPlant) return;
+    const updated = greeniePlants.find((p) => p.id === selectedPlant.id);
+    if (updated) setSelectedPlant(updated);
+  }, [greeniePlants, selectedPlant]);
+
   // Combine products based on source filter
-  const allProducts = productSource === "greenie" 
-    ? plantsData 
-    : productSource === "sellers" 
-    ? sellerProductsAsPlants 
-    : [...plantsData, ...sellerProductsAsPlants];
+  const allProducts =
+    productSource === "greenie"
+      ? greeniePlants
+      : productSource === "sellers"
+      ? sellerProductsAsPlants
+      : [...greeniePlants, ...sellerProductsAsPlants];
 
   const filteredPlants = allProducts
     .filter((plant) => {
