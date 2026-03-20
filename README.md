@@ -36,23 +36,6 @@ npm i
 npm run dev
 ```
 
-## Đơn hàng Admin — json-server (đồng bộ nhiều máy / trình duyệt)
-
-Đơn hàng cửa hàng chính (Greenie) được lưu qua **json-server** (`db.json`) thay vì chỉ `localStorage`, nên khi bạn chạy API trên một máy và các máy khác mở cùng site (qua mạng LAN hoặc deploy), admin sẽ thấy chung một danh sách đơn.
-
-```sh
-# Cách 1: Chạy API + Vite cùng lúc
-npm run dev:full
-
-# Cách 2: Hai terminal
-npm run server   # json-server tại http://localhost:3001, đọc/ghi db.json
-npm run dev      # Vite proxy /api → json-server
-```
-
-- File dữ liệu: `db.json` (mảng `orders`).
-- **Máy khác trong LAN**: chạy `npm run server -- --host 0.0.0.0` (hoặc cấu hình json-server lắng nghe mọi interface) và đặt `VITE_API_URL=http://<IP-máy-chủ>:3001` trong `.env` trên máy client, hoặc chỉnh proxy/build tương ứng.
-- Nếu **không** bật json-server, app tự dùng lại `localStorage` như trước.
-
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
