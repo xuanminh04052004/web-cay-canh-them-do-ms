@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Star, Heart, ShoppingCart, Minus, Plus, Droplets, Sun, Thermometer, Wind, ChevronLeft, ChevronRight } from "lucide-react";
@@ -16,7 +16,56 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
 
-  let plant: (typeof plants[0] & { sellerId?: string }) | undefined = plants.find((p) => p.id === Number(id));
+  // GREENIE products are managed in AdminContext and persisted in localStorage("admin_products").
+  const [greeniePlants, setGreeniePlants] = useState(() => {
+    const saved = localStorage.getItem("admin_products");
+    if (!saved) return plants;
+    try {
+      const parsed = JSON.parse(saved) as typeof plants;
+      return Array.isArray(parsed) ? parsed : plants;
+    } catch {
+      return plants;
+    }
+  });
+
+  useEffect(() => {
+    const syncGreeniePlants = () => {
+      const saved = localStorage.getItem("admin_products");
+      if (!saved) {
+        setGreeniePlants(plants);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(saved) as typeof plants;
+        if (Array.isArray(parsed)) setGreeniePlants(parsed);
+      } catch {
+        // Ignore invalid cache.
+      }
+    };
+
+    syncGreeniePlants();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "admin_products") syncGreeniePlants();
+    };
+    window.addEventListener("storage", onStorage);
+
+    // Same-tab fallback: poll lightly.
+    const interval = window.setInterval(syncGreeniePlants, 2500);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const greeniePlantById = useMemo(() => {
+    const rawId = Number(id);
+    if (!Number.isFinite(rawId)) return undefined;
+    return greeniePlants.find((p) => p.id === rawId);
+  }, [greeniePlants, id]);
+
+  let plant: (typeof plants[0] & { sellerId?: string }) | undefined = greeniePlantById;
   let sellerProductId: string | undefined;
 
   // If not found in static data, check seller products
@@ -85,7 +134,9 @@ const ProductDetail = () => {
     "Khó": "bg-destructive/20 text-destructive",
   };
 
-  const relatedPlants = plants.filter((p) => p.category === plant.category && p.id !== plant.id).slice(0, 4);
+  const relatedPlants = greeniePlants
+    .filter((p) => p.category === plant.category && p.id !== plant.id)
+    .slice(0, 4);
 
   return (
     <div className="min-h-screen bg-background">
