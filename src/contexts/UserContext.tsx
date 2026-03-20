@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { fetchOrdersFromServer, patchOrderOnServer } from '@/lib/jsonServerApi';
 
 export interface Address {
   id: string;
@@ -65,7 +64,7 @@ interface UserContextType {
   setDefaultAddress: (id: string) => void;
   getDefaultAddress: () => Address | undefined;
   addOrder: (order: Omit<Order, 'id' | 'timeline'> & { id?: string }) => void;
-  cancelOrder: (orderId: string, reason: string) => Promise<boolean>;
+  cancelOrder: (orderId: string, reason: string) => boolean;
   refreshOrders: () => void;
 }
 
@@ -123,71 +122,60 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('userOrders', JSON.stringify(orders));
   }, [orders]);
 
-  // Đồng bộ trạng thái đơn với Admin (json-server hoặc localStorage)
+  // Sync with Admin orders
   useEffect(() => {
-    const mergeFromAdminList = (adminOrders: { id: number | string; status: string }[]) => {
-      setOrders((prevOrders) => {
-        let hasChanges = false;
-        const newOrders = prevOrders.map((userOrder) => {
-          const adminOrder = adminOrders.find(
-            (ao) => ao.id.toString() === userOrder.id
-          );
-          if (adminOrder) {
-            let newStatus = userOrder.status;
-            if (adminOrder.status === 'Chờ xử lý') newStatus = 'pending';
-            else if (adminOrder.status === 'Đang giao') newStatus = 'shipping';
-            else if (adminOrder.status === 'Đã giao') newStatus = 'delivered';
-            else if (adminOrder.status === 'Đã xác nhận') newStatus = 'confirmed';
-            else if (adminOrder.status === 'Đã hủy') newStatus = 'cancelled';
-
-            if (newStatus !== userOrder.status) {
-              hasChanges = true;
-              return {
-                ...userOrder,
-                status: newStatus,
-                timeline: [
-                  ...userOrder.timeline,
-                  {
-                    status: adminOrder.status,
-                    date: new Date().toLocaleDateString('vi-VN'),
-                    description: `Trạng thái cập nhật: ${adminOrder.status}`,
-                  },
-                ],
-              };
-            }
-          }
-          return userOrder;
-        });
-        return hasChanges ? newOrders : prevOrders;
-      });
-    };
-
-    const syncOrders = async () => {
-      const remote = await fetchOrdersFromServer();
-      if (remote !== null) {
-        mergeFromAdminList(remote);
-        return;
-      }
+    const syncOrders = () => {
       const adminOrdersRaw = localStorage.getItem('admin_orders');
       if (!adminOrdersRaw) return;
+
       try {
-        const adminOrders = JSON.parse(adminOrdersRaw);
-        mergeFromAdminList(adminOrders);
+        const adminOrders = JSON.parse(adminOrdersRaw); // Type is from AdminContext
+        setOrders(prevOrders => {
+          let hasChanges = false;
+          const newOrders = prevOrders.map(userOrder => {
+            // Find matching admin order by ID
+            const adminOrder = adminOrders.find((ao: any) => ao.id.toString() === userOrder.id);
+            if (adminOrder) {
+              // Map Admin status to User status (English keys)
+              let newStatus = userOrder.status;
+              if (adminOrder.status === 'Chờ xử lý') newStatus = 'pending';
+              else if (adminOrder.status === 'Đang giao') newStatus = 'shipping';
+              else if (adminOrder.status === 'Đã giao') newStatus = 'delivered';
+              else if (adminOrder.status === 'Đã xác nhận') newStatus = 'confirmed'; // Assuming Admin has this or maps similarly
+              else if (adminOrder.status === 'Đã hủy') newStatus = 'cancelled';
+
+              if (newStatus !== userOrder.status) {
+                hasChanges = true;
+                // Add to timeline if changed
+                return {
+                  ...userOrder,
+                  status: newStatus,
+                  timeline: [
+                    ...userOrder.timeline,
+                    {
+                      status: adminOrder.status,
+                      date: new Date().toLocaleDateString('vi-VN'),
+                      description: `Trạng thái cập nhật: ${adminOrder.status}`
+                    }
+                  ]
+                };
+              }
+            }
+            return userOrder;
+          });
+          return hasChanges ? newOrders : prevOrders;
+        });
       } catch (e) {
-        console.error('Error syncing admin orders', e);
+        console.error("Error syncing admin orders", e);
       }
     };
 
-    const onStorage = () => {
-      void syncOrders();
-    };
-    window.addEventListener('storage', onStorage);
-    const interval = setInterval(() => {
-      void syncOrders();
-    }, 2000);
+    window.addEventListener('storage', syncOrders);
+    // Poll every few seconds to simulate real-time in single browser
+    const interval = setInterval(syncOrders, 2000);
 
     return () => {
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('storage', syncOrders);
       clearInterval(interval);
     };
   }, []);
@@ -237,7 +225,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setOrders(prev => [newOrder, ...prev]);
   };
 
-  const cancelOrder = async (orderId: string, reason: string): Promise<boolean> => {
+  const cancelOrder = (orderId: string, reason: string): boolean => {
     const order = orders.find(o => o.id === orderId);
     // Only allow cancellation if status is pending or confirmed (not shipping or delivered)
     if (order && (order.status === 'pending' || order.status === 'confirmed')) {
@@ -260,26 +248,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return o;
       }));
 
-      const numId = parseInt(orderId, 10);
-      const remote = await fetchOrdersFromServer();
-      if (remote !== null && !Number.isNaN(numId)) {
-        await patchOrderOnServer(numId, { status: 'Đã hủy' });
-      } else {
-        const adminOrdersRaw = localStorage.getItem('admin_orders');
-        if (adminOrdersRaw) {
-          try {
-            const adminOrders = JSON.parse(adminOrdersRaw);
-            const updatedAdminOrders = adminOrders.map((ao: { id: number | string; status?: string; cancelReason?: string }) => {
-              if (ao.id.toString() === orderId || ao.id === numId) {
-                return { ...ao, status: 'Đã hủy', cancelReason: reason };
-              }
-              return ao;
-            });
-            localStorage.setItem('admin_orders', JSON.stringify(updatedAdminOrders));
-            window.dispatchEvent(new Event('storage'));
-          } catch (e) {
-            console.error('Failed to sync admin orders:', e);
-          }
+      // Sync with admin orders in localStorage
+      const adminOrdersRaw = localStorage.getItem('admin_orders');
+      if (adminOrdersRaw) {
+        try {
+          const adminOrders = JSON.parse(adminOrdersRaw);
+          // Find matching order by ID (could be string or number)
+          const updatedAdminOrders = adminOrders.map((ao: any) => {
+            if (ao.id.toString() === orderId || ao.id === parseInt(orderId)) {
+              return { ...ao, status: 'Đã hủy', cancelReason: reason };
+            }
+            return ao;
+          });
+          localStorage.setItem('admin_orders', JSON.stringify(updatedAdminOrders));
+          // Dispatch storage event to notify AdminContext
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {
+          console.error('Failed to sync admin orders:', e);
         }
       }
 
