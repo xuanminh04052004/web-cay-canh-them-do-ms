@@ -195,7 +195,7 @@ const Checkout = () => {
     // Chỉ thêm đơn lên Admin khi toàn bộ sản phẩm từ cửa hàng chính Greenie (không có seller)
     const isGreenieOnlyOrder = items.length > 0 && items.every(item => !item.plant.sellerId);
     if (isGreenieOnlyOrder) {
-      addAdminOrder({
+      await addAdminOrder({
         id: sharedOrderId,
         customerName: getCustomerName(),
         customerPhone: getCustomerPhone(),
